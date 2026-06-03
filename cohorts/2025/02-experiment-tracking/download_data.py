@@ -3,7 +3,7 @@
 Проверяет наличие файлов и скачивает только отсутствующие.
 """
 import os
-import urllib.request
+import requests
 
 
 BASE_URL = "https://d37ci6vzurychx.cloudfront.net/trip-data"
@@ -15,23 +15,23 @@ def download_file(url: str, dest_path: str, month: str) -> bool:
     filename = f"green_tripdata_{month}.parquet"
     full_url = f"{url}/{filename}"
     
-    print(f"Скачивание данных за {month}...")
-    print(f"URL: {full_url}")
+    print(f"Скачивание {filename}...")
     
     try:
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
         
-        def report_progress(block_num, block_size, total_size):
-            downloaded = block_num * block_size
-            percent = min(downloaded * 100 / total_size, 100)
-            print(f"\r  Прогресс: {percent:.1f}% ({downloaded/1024/1024:.1f}MB / {total_size/1024/1024:.1f}MB)", end="")
+        response = requests.get(full_url, stream=True, timeout=300)
+        response.raise_for_status()
         
-        urllib.request.urlretrieve(full_url, dest_path, report_progress)
-        print(f"\n  ✓ Файл загружен: {dest_path}")
+        with open(dest_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        
+        print(f"✓ {filename} загружен ({os.path.getsize(dest_path)/1024/1024:.1f}MB)")
         return True
         
     except Exception as e:
-        print(f"\n  ✗ Ошибка при загрузке: {e}")
+        print(f"✗ Ошибка: {e}")
         return False
 
 
